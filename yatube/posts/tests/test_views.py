@@ -40,10 +40,6 @@ class YatubePagesTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(username='Author_Ivan')
-        """Создаю автора, на которго будет подписан Юзер"""
-        cls.blogger = User.objects.create_user(username='Tolik')
-        """Создаю автора, который не будет подписан на блоггера"""
-        cls.not_blogger = User.objects.create_user(username='Oleg')
         """Создаю пустую группу для проверки отсутсвия в ней постов"""
         cls.empty_group = Group.objects.create(
             title='Turtle',
@@ -80,8 +76,6 @@ class YatubePagesTests(TestCase):
     def setUp(self):
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
-        self.authorized_not_blogger = Client()
-        self.authorized_not_blogger.force_login(self.not_blogger)
 
     @classmethod
     def tearDownClass(cls):
@@ -170,13 +164,39 @@ class YatubePagesTests(TestCase):
             'posts:group_posts', kwargs={'slug': self.empty_group.slug}),
             COUNT_OF_POSTS_IN_GROUP_MUST_BE)
 
-    def test_follower_add_remove_author(self):
-        """Юзер добавляет/удаляет интересных авторов"""
+
+class FollowTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create_user(username='Author_Ivan')
+        """Создаю автора, на которго будет подписан Юзер"""
+        cls.blogger = User.objects.create_user(username='Tolik')
+        """Создаю автора, который не будет подписан на блоггера"""
+        cls.not_blogger = User.objects.create_user(username='Oleg')
+
+    def setUp(self):
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.user)
+        self.authorized_not_blogger = Client()
+        self.authorized_not_blogger.force_login(self.not_blogger)
+
+    def test_follow_author(self):
+        """Юзер подписывается на автора"""
         count_before = Follow.objects.count()
         self.authorized_client.get(reverse(
             'posts:profile_follow', kwargs={'username': self.blogger.username}
         ))
         count_after = Follow.objects.count()
+        self.assertEqual(count_before, count_after - 1)
+
+    def test_unfollow_author(self):
+        """Юзер отписывается от автора"""
+        Follow.objects.create(
+            user=self.user,
+            author=self.blogger
+        )
+        count_before = Follow.objects.count()
         self.authorized_client.get(
             reverse(
                 'posts:profile_unfollow',
@@ -184,15 +204,13 @@ class YatubePagesTests(TestCase):
             )
         )
         count_after_unfollow = Follow.objects.count()
-        self.assertEqual(count_before, count_after - 1)
-        self.assertEqual(count_before, count_after_unfollow)
+        self.assertEqual(count_before - 1, count_after_unfollow)
 
     def test_new_post_in_followers(self):
         """Новая запись видна у подписчиков и не видна у остальных"""
-        self.authorized_client.get(
-            reverse(
-                'posts:profile_follow',
-                kwargs={'username': self.blogger.username})
+        Follow.objects.create(
+            user=self.user,
+            author=self.blogger
         )
         response = self.authorized_client.get(reverse('posts:follow_index'))
         count_before = len(response.context['page_obj'])

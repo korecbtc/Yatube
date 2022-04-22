@@ -3,7 +3,7 @@ from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import CommentForm, PostForm
-from .models import Comment, Follow, Group, Post, User
+from .models import Follow, Group, Post, User
 
 NUMBER_OF_POSTS = 10
 
@@ -23,8 +23,7 @@ def index(request):
 
 def group_posts(request, slug):
     group = get_object_or_404(Group, slug=slug)
-    post_list = Post.objects.filter(
-        group=group)
+    post_list = group.posts.all()
     page_obj = paginator_func(post_list, request)
     context = {
         'group': group,
@@ -34,20 +33,16 @@ def group_posts(request, slug):
 
 
 def profile(request, username):
-    user_obj = get_object_or_404(User, username=username)
-    post_list = Post.objects.filter(author=user_obj)
+    user = get_object_or_404(User, username=username)
+    post_list = user.posts.all()
     page_obj = paginator_func(post_list, request)
     following = False
-    if request.user.is_authenticated:
-        if Follow.objects.filter(
-            user=request.user,
-            author=user_obj
-        ).exists():
-            following = True
-        else:
-            following = False
+    following = request.user.is_authenticated and Follow.objects.filter(
+        user=request.user,
+        author=user
+    ).exists()
     context = {
-        'user_obj': user_obj,
+        'user_obj': user,
         'page_obj': page_obj,
         'following': following
     }
@@ -57,7 +52,7 @@ def profile(request, username):
 def post_detail(request, post_id):
     post = get_object_or_404(Post, pk=post_id)
     form = CommentForm(request.POST or None)
-    comments = Comment.objects.filter(post=post)
+    comments = post.comments.all()
     context = {
         'form': form,
         'comments': comments,
