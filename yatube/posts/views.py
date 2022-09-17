@@ -9,6 +9,7 @@ NUMBER_OF_POSTS = 10
 
 
 def paginator_func(post_list, request):
+    """Паджинатор."""
     paginator = Paginator(post_list, NUMBER_OF_POSTS)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -16,12 +17,14 @@ def paginator_func(post_list, request):
 
 
 def index(request):
+    """Функция для отображения главной страницы проекта."""
     post_list = Post.objects.all()
     page_obj = paginator_func(post_list, request)
     return render(request, 'posts/index.html', {'page_obj': page_obj})
 
 
 def group_posts(request, slug):
+    """Функция для отображения страницы сообщества."""
     group = get_object_or_404(Group, slug=slug)
     post_list = group.posts.all()
     page_obj = paginator_func(post_list, request)
@@ -33,6 +36,7 @@ def group_posts(request, slug):
 
 
 def profile(request, username):
+    """Функция для отображения профиля пользователя."""
     user = get_object_or_404(User, username=username)
     post_list = user.posts.all()
     page_obj = paginator_func(post_list, request)
@@ -50,6 +54,7 @@ def profile(request, username):
 
 
 def post_detail(request, post_id):
+    """Функция для вывода конкретной записи."""
     post = get_object_or_404(Post, pk=post_id)
     form = CommentForm(request.POST or None)
     comments = post.comments.all()
@@ -63,6 +68,7 @@ def post_detail(request, post_id):
 
 @login_required
 def post_create(request):
+    """Функция для создания записи."""
     user = request.user
     form = PostForm(request.POST or None, files=request.FILES or None)
     if form.is_valid():
@@ -84,6 +90,7 @@ def post_create(request):
 
 @login_required
 def post_edit(request, post_id):
+    """Функция для редактирования записи."""
     user = request.user
     is_edit = True
     post = get_object_or_404(Post, pk=post_id)
